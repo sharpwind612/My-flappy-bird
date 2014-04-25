@@ -1,0 +1,231 @@
+<html>
+<head>
+<title>My flappy bird</title>
+<script>
+var boxx=0;
+var boxy=0;
+var boxwidth=384;
+var boxheight=512;
+var backgroundwidth=384;
+var backgroundheight=448;
+var groundwidth=18.5;
+var groundheight=64;
+var	birdwidth=46;
+var	birdheight=32;
+var	birdx=192-birdwidth;
+var	birdy=224-birdheight;
+var pipewidth=69;	 //管道的宽度
+var blankwidth=126;  //上下管道之间的间隔
+var pipeinterval=pipewidth+120;	//两个管道之间的间隔
+var birdstate;
+var upbackground;
+var bottombackground;
+var birdimage;
+var pipeupimage;
+var pipedownimage;
+var pipenumber=0;		//当前已经读取管道高度的个数
+var fps=30;				//游戏的帧数，推荐在30~60之间
+var gamestate=1;		//游戏状态：0--未开始，1--已开始，2--已结束
+var times;
+var canvas;
+var ctx;
+var i;
+var bottomstate;
+var pipeheight=[];
+var pipeoncanvas=[ 	 //要显示在Canvas上的管道的location和height
+	[0,0],
+	[0,0],
+	[0,0]];
+
+function init(){
+	ctx=document.getElementById('canvas').getContext('2d');	
+	ctx.lineWidth=2;
+	upbackground=new Image();
+	upbackground.src="background.png";
+	bottombackground=new Image();
+	bottombackground.src="ground.png";
+	bottomstate=1;
+	birdimage=new Image();
+	birdimage.src="bird.png";
+	birdstate=1;
+	///////////////////
+	pipeupimage=new Image();
+	pipeupimage.src="pipeup.png";
+	pipedownimage=new Image();
+	pipedownimage.src="pipedown.png";
+	/////////////////////
+	times=Math.ceil(boxwidth/groundwidth)+1;
+	initPipe();
+	canvas=document.getElementById("canvas");
+	canvas.addEventListener("mousedown",birdJump,false);
+	window.addEventListener("keydown",getkeyAndMove,false);
+	setInterval(run,1000/fps);
+}
+
+//随机生成管道高度数据
+function initPipe(){
+	for(i=0;i<200;i++)
+		pipeheight[i]=Math.ceil(Math.random()*216)+56;//高度范围从56~272
+	for(i=0;i<3;i++){	
+	pipeoncanvas[i][0]=boxwidth+i*pipeinterval;
+	pipeoncanvas[i][1]=pipeheight[pipenumber];
+	pipenumber++;
+	}
+}
+
+//游戏的主要逻辑及绘制
+function run(){
+	if(gamestate==1){
+	drawScene();
+	//绘制鸟
+	drawBird();
+	checkBird();
+	}
+	if(gamestate==2){
+	
+	}
+}
+
+//绘制基本场景
+function drawScene(){
+	//清理画布上上一桢的画面
+	ctx.clearRect(boxx,boxy,boxwidth,boxheight);
+	//绘制上方静态背景
+	ctx.drawImage(upbackground,0,0,backgroundwidth,backgroundheight);
+	//绘制下方的动态背景
+	drawmovingscene();
+	//绘制管道
+	//drawPipe(80,56);
+	//drawPipe(200,272);
+	drawAllPipe();
+	//绘制边框线
+	ctx.strokeRect(boxx+1,boxy+1,boxwidth-2,boxheight-2);
+}
+
+//绘制下方的动态背景
+function drawmovingscene(){
+	if(bottomstate==1){
+	for(i=0;i<times;i++)
+	ctx.drawImage(bottombackground,groundwidth*i,backgroundheight,groundwidth,groundheight);
+	bottomstate=2;
+	}
+	else if(bottomstate==2){
+	for(i=0;i<times;i++)
+	ctx.drawImage(bottombackground,groundwidth*(i-0.25),backgroundheight,groundwidth,groundheight);
+	bottomstate=3;
+	}
+	else if(bottomstate==3){
+	for(i=0;i<times;i++)
+	ctx.drawImage(bottombackground,groundwidth*(i-0.5),backgroundheight,groundwidth,groundheight);
+	bottomstate=4;
+	}
+	else if(bottomstate==4){
+	for(i=0;i<times;i++)
+	ctx.drawImage(bottombackground,groundwidth*(i-0.75),backgroundheight,groundwidth,groundheight);
+	bottomstate=1;
+	}
+}
+
+//使用给定的高度和位置绘制上下两根管道
+function drawPipe(location,height){
+	//绘制下面的管道
+	ctx.drawImage(pipeupimage,0,0,pipewidth*2,height*2,location,boxheight-(height+groundheight),pipewidth,height);
+	ctx.drawImage(pipedownimage,0,793-(backgroundheight-height-blankwidth)*2,pipewidth*2,(backgroundheight-height-blankwidth)*2,location,0,pipewidth,backgroundheight-height-blankwidth);
+	//ctx.drawImage(pipedownimage,0,793-(backgroundheight-height-blankwidth)*2,pipewidth*2,(backgroundheight-height-blankwidth)*2,location,0,pipewidth,222);
+}
+
+//绘制需要显示的管道
+function drawAllPipe(){
+	for(i=0;i<3;i++){
+		pipeoncanvas[i][0]=pipeoncanvas[i][0]-4.625;
+	}
+	if(pipeoncanvas[0][0]<=-pipewidth){
+		pipeoncanvas[0][0]=pipeoncanvas[1][0];
+		pipeoncanvas[0][1]=pipeoncanvas[1][1];
+		pipeoncanvas[1][0]=pipeoncanvas[2][0];
+		pipeoncanvas[1][1]=pipeoncanvas[2][1];
+		pipeoncanvas[2][0]=pipeoncanvas[2][0]+pipeinterval;
+		pipeoncanvas[2][1]=pipeheight[pipenumber];
+		pipenumber++;
+	}
+	for(i=0;i<3;i++){
+		drawPipe(pipeoncanvas[i][0],pipeoncanvas[i][1]);
+	}
+}
+
+function drawBird(){
+	if(birdstate==1||birdstate==2||birdstate==3){
+	ctx.drawImage(birdimage,0,0,92,64,birdx,birdy,birdwidth,birdheight);
+	birdstate++;
+	}
+	else if(birdstate==4||birdstate==5||birdstate==6){
+	ctx.drawImage(birdimage,92,0,92,64,birdx,birdy,birdwidth,birdheight);
+	birdstate++;
+	}
+	else if(birdstate==7||birdstate==8||birdstate==9){
+	ctx.drawImage(birdimage,184,0,92,64,birdx,birdy,birdwidth,birdheight);
+	birdstate++;
+	if(birdstate==9) birdstate=1;
+	}
+	//context.drawImage(img,0,0,swidth,sheight,x,y,width,height);
+}
+
+//检查鸟是否与管道产生碰撞，不可能与第三组管道重合
+function checkBird(){
+	//先判断第一组管道
+	//如果鸟在x轴上与第一组管道重合
+	if(birdx+birdwidth>pipeoncanvas[0][0]&&birdx+birdwidth<pipeoncanvas[0][0]+pipewidth+birdwidth){
+		//如果鸟在y轴上与第一组管道上部或下部重合
+		if(birdy<backgroundheight-pipeoncanvas[0][1]-blankwidth||birdy+birdheight>backgroundheight-pipeoncanvas[0][1])
+			gamestate=2;	//游戏结束
+	}
+	//判断第二组管道
+	//如果鸟在x轴上与第二组管道重合
+	else if(birdx+birdwidth>pipeoncanvas[1][0]&&birdx+birdwidth<pipeoncanvas[1][0]+pipewidth+birdwidth){
+		//如果鸟在y轴上与第二组管道上部或下部重合
+		if(birdy<backgroundheight-pipeoncanvas[1][1]-blankwidth||birdy+birdheight>backgroundheight-pipeoncanvas[1][1])
+			gamestate=2;	//游戏结束
+	}
+}
+
+//处理鸟的跳跃事件
+function birdJump(){
+	birdy=birdy+10;
+}
+
+//使用上下键移动小鸟进行测试
+function getkeyAndMove(event) {
+  var keyCode; 
+  if(event == null)
+  {
+    keyCode = window.event.keyCode; 
+	window.event.preventDefault();
+  }
+  else 
+  {
+    keyCode = event.keyCode; 
+	event.preventDefault();
+  }
+  switch(keyCode)
+  {
+   //case 37:  //left arrow
+    case 38:  //up arrow
+	  birdy=birdy-20;
+      break; 
+   // case 39: //right arrow
+    case 40:  //down arrow
+	  birdy=birdy+20;
+      break; 
+	default:
+	 window.removeEventListener('keydown',getkeyAndMove,false);
+   }
+ }
+
+</script>
+</head>
+<body onLoad="init();">
+<canvas id="canvas" width="384" height="512" style="margin-top: 8px;">
+Your browser doesn't support the HTML5 element canvas.
+</canvas>
+</body>
+</html>
