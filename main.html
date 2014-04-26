@@ -10,6 +10,7 @@ var backgroundwidth=384;
 var backgroundheight=448;
 var groundwidth=18.5;
 var groundheight=64;
+
 var	birdwidth=46;
 var	birdheight=32;
 var	birdx=192-birdwidth;
@@ -19,6 +20,7 @@ var birdimage;
 var gravity=1;		 //重力加速度
 var jumpvelocity=11;	 //跳跃时获得的向上速度
 var birdstate;
+
 var upbackground;
 var bottombackground;
 var bottomstate;
@@ -29,10 +31,19 @@ var blankwidth=126;  //上下管道之间的间隔
 var pipeinterval=pipewidth+120;	//两个管道之间的间隔
 var pipenumber=0;		//当前已经读取管道高度的个数
 var fps=30;				//游戏的帧数，推荐在30~60之间
-var gamestate=1;		//游戏状态：0--未开始，1--已开始，2--已结束
-var times;
-var score=0
+var gamestate=0;		//游戏状态：0--未开始，1--已开始，2--已结束
+var times;				//地板图片的条数  Math.ceil(boxwidth/groundwidth)+1;
+var highscore=0;		//得到过的最高分
+var score=0				//目前得到的分数
 var movespeed=groundwidth/4;	//场景向左移动的速度，为底部场景的宽度的1/4
+
+var tipimage;				//开始的提示图片
+var tipwidth=168;
+var tipheight=136;
+
+var boardimage;				//分数板的图片
+var boardwidth=282;
+var boardheight=245;
 
 var canvas;
 var ctx;
@@ -46,7 +57,7 @@ var pipeoncanvas=[ 	 //要显示在Canvas上的管道的location和height
 function init(){
 	ctx=document.getElementById('canvas').getContext('2d');	
 	ctx.lineWidth=2;
-	ctx.font="bold 40px HarlemNights";			//设置绘制分数的字体
+	ctx.font="bold 40px HarlemNights";			//设置绘制分数的字体 Quartz Regular \HarlemNights
 	ctx.fillStyle="#FFFFFF";
 	upbackground=new Image();
 	upbackground.src="background.png";
@@ -56,6 +67,10 @@ function init(){
 	birdimage=new Image();
 	birdimage.src="bird.png";
 	birdstate=1;
+	tipimage=new Image();
+	tipimage.src="space_tip.png";
+	boardimage=new Image();
+	boardimage.src="scoreboard.png";
 	///////////////////
 	pipeupimage=new Image();
 	pipeupimage.src="pipeup.png";
@@ -65,8 +80,8 @@ function init(){
 	times=Math.ceil(boxwidth/groundwidth)+1;
 	initPipe();
 	canvas=document.getElementById("canvas");
-	canvas.addEventListener("mousedown",birdJump,false);
-	window.addEventListener("keydown",birdJump,false);
+	canvas.addEventListener("mousedown",mouseDown,false);
+	window.addEventListener("keydown",keyDown,false);
 	//window.addEventListener("keydown",getkeyAndMove,false);
 	setInterval(run,1000/fps);
 }
@@ -84,22 +99,58 @@ function initPipe(){
 
 //游戏的主要逻辑及绘制
 function run(){
-	if(gamestate==1){
-	birdvy=birdvy+gravity;
-	//绘制基本场景
-	drawScene();
-	//绘制鸟
-	drawBird();
-	drawScore();
-	//检测鸟是否与物体发生碰撞
-	checkBird();
-	}
-	if(gamestate==2){
+	//游戏未开始
+	if(gamestate==0){
+		drawBeginScene();	//绘制开始场景
+		drawBird();			//绘制鸟
+		drawTip(); 			//绘制提示
 	
+	}
+	//游戏进行中
+	if(gamestate==1){
+		birdvy=birdvy+gravity;
+		drawScene(); 		//绘制场景
+		drawBird();			//绘制鸟
+		drawScore();		//绘制分数
+		checkBird();		//检测鸟是否与物体发生碰撞
+	}
+	//游戏结束
+	if(gamestate==2){
+		if(birdy+birdheight<backgroundheight)	//如果鸟没有落地
+		birdvy=birdvy+gravity;
+		else birdvy=0;
+		drawEndScene();		//绘制结束场景
+		drawBird();		    //绘制鸟
+		drawScoreBoard();   //绘制分数板
 	}
 }
 
-//绘制基本场景
+function drawTip(){
+	ctx.drawImage(tipimage,birdx-57,birdy+birdheight+10,tipwidth,tipheight);	
+}
+
+//绘制分数板
+function drawScoreBoard(){
+	//绘制分数板
+	ctx.drawImage(boardimage,(backgroundwidth-boardwidth)/2,140,boardwidth,boardheight);	
+	//绘制当前的得分
+	ctx.fillText(score,(backgroundwidth-boardwidth)/2+140,boardheight/2+132);
+	//绘制最高分
+	ctx.fillText(score,(backgroundwidth-boardwidth)/2+140,boardheight/2+184);
+}
+//绘制开始场景(不包括管道)
+function drawBeginScene(){
+	//清理画布上上一桢的画面
+	ctx.clearRect(boxx,boxy,boxwidth,boxheight);
+	//绘制上方静态背景
+	ctx.drawImage(upbackground,0,0,backgroundwidth,backgroundheight);
+	//绘制下方的动态背景
+	drawmovingscene();
+	//绘制边框线
+	ctx.strokeRect(boxx+1,boxy+1,boxwidth-2,boxheight-2);
+}
+
+//绘制场景
 function drawScene(){
 	//清理画布上上一桢的画面
 	ctx.clearRect(boxx,boxy,boxwidth,boxheight);
@@ -111,6 +162,37 @@ function drawScene(){
 	//drawPipe(80,56);
 	//drawPipe(200,272);
 	drawAllPipe();
+	//绘制边框线
+	ctx.strokeRect(boxx+1,boxy+1,boxwidth-2,boxheight-2);
+}
+
+//绘制结束场景(不包括管道)
+function drawEndScene(){
+	//清理画布上上一桢的画面
+	ctx.clearRect(boxx,boxy,boxwidth,boxheight);
+	//绘制上方静态背景
+	ctx.drawImage(upbackground,0,0,backgroundwidth,backgroundheight);
+	//绘制下方的静态背景，根据bottomstate来判断如何绘制静态地面
+	switch(bottomstate){
+	case 1:
+		for(i=0;i<times;i++)
+		ctx.drawImage(bottombackground,groundwidth*(i-0.75),backgroundheight,groundwidth,groundheight);
+		break;
+	case 2:
+		for(i=0;i<times;i++)
+		ctx.drawImage(bottombackground,groundwidth*i,backgroundheight,groundwidth,groundheight);
+		break;
+	case 3:
+		for(i=0;i<times;i++)
+		ctx.drawImage(bottombackground,groundwidth*(i-0.25),backgroundheight,groundwidth,groundheight);
+		break;
+	case 4:
+		for(i=0;i<times;i++)
+		ctx.drawImage(bottombackground,groundwidth*(i-0.5),backgroundheight,groundwidth,groundheight);
+	}
+	//绘制当前的柱子
+	for(i=0;i<3;i++)
+	drawPipe(pipeoncanvas[i][0],pipeoncanvas[i][1]);
 	//绘制边框线
 	ctx.strokeRect(boxx+1,boxy+1,boxwidth-2,boxheight-2);
 }
@@ -192,29 +274,75 @@ function drawScore(){
 function checkBird(){
 	//先判断第一组管道
 	//如果鸟在x轴上与第一组管道重合
-	if(birdx+birdwidth>pipeoncanvas[0][0]&&birdx+birdwidth<pipeoncanvas[0][0]+pipewidth+birdwidth){
+	if(birdx+birdwidth>pipeoncanvas[0][0]&&birdx+birdwidth<pipeoncanvas[0][0]+pipewidth+birdwidth)
 		//如果鸟在y轴上与第一组管道上部或下部重合
-		if(birdy<backgroundheight-pipeoncanvas[0][1]-blankwidth||birdy+birdheight>backgroundheight-pipeoncanvas[0][1])
+		if(birdy<backgroundheight-pipeoncanvas[0][1]-blankwidth||birdy+birdheight>backgroundheight-pipeoncanvas[0][1]){
+			ctx.font="bold 35px HarlemNights";	
+			ctx.fillStyle="#000000";
+			updateScore();
 			gamestate=2;	//游戏结束
-	}
+		}
 	//判断第二组管道
 	//如果鸟在x轴上与第二组管道重合
-	else if(birdx+birdwidth>pipeoncanvas[1][0]&&birdx+birdwidth<pipeoncanvas[1][0]+pipewidth+birdwidth){
+	else if(birdx+birdwidth>pipeoncanvas[1][0]&&birdx+birdwidth<pipeoncanvas[1][0]+pipewidth+birdwidth)
 		//如果鸟在y轴上与第二组管道上部或下部重合
-		if(birdy<backgroundheight-pipeoncanvas[1][1]-blankwidth||birdy+birdheight>backgroundheight-pipeoncanvas[1][1])
+		if(birdy<backgroundheight-pipeoncanvas[1][1]-blankwidth||birdy+birdheight>backgroundheight-pipeoncanvas[1][1]){
+			ctx.font="bold 35px HarlemNights";	
+			ctx.fillStyle="#000000";
+			updateScore();
 			gamestate=2;	//游戏结束
-	}
+		}
 	//判断是否碰撞地面
-	if(birdy+birdheight>backgroundheight)
-		gamestate=2;		//游戏结束
+	if(birdy+birdheight>backgroundheight){
+		ctx.font="bold 35px HarlemNights";	
+		ctx.fillStyle="#000000";
+		updateScore();
+		gamestate=2;	//游戏结束
+	}
 	if(birdx>pipeoncanvas[0][0]+pipewidth-movespeed/2&&birdx<pipeoncanvas[0][0]+pipewidth+movespeed/2){
 		score++;
 	}
 }
 
-//处理鸟的跳跃事件
-function birdJump(){
-	birdvy=-jumpvelocity;
+//刷新最好成绩
+function updateScore(){
+	if(score>highscore)
+		highscore=score;
+}
+
+//处理键盘事件
+function keyDown(){
+	if(gamestate==0){
+		birdvy=-jumpvelocity;
+		gamestate=1;
+	}
+	else if(gamestate==1){
+		birdvy=-jumpvelocity;
+	}
+}
+
+//处理鼠标点击事件，相比键盘多了位置判断
+function mouseDown(ev){
+	var mx;			//存储鼠标横坐标
+	var my;			//存储鼠标纵坐标
+	if ( ev.layerX ||  ev.layerX == 0) { // Firefox
+   		mx= ev.layerX;
+    	my = ev.layerY;
+  	} else if (ev.offsetX || ev.offsetX == 0) { // Opera
+    	mx = ev.offsetX;
+    	my = ev.offsetY;
+  	}
+	if(gamestate==0){
+		birdvy=-jumpvelocity;
+		gamestate=1;
+	}
+	else if(gamestate==1){
+		birdvy=-jumpvelocity;
+	}
+	//游戏结束后判断是否点击了重新开始
+	else {
+		
+	}
 }
 
 //使用上下键移动小鸟进行测试
