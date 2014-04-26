@@ -42,6 +42,8 @@ var tipwidth=168;
 var tipheight=136;
 
 var boardimage;				//分数板的图片
+var boardx;
+var boardy=140;
 var boardwidth=282;
 var boardheight=245;
 
@@ -71,6 +73,7 @@ function init(){
 	tipimage.src="space_tip.png";
 	boardimage=new Image();
 	boardimage.src="scoreboard.png";
+	boardx=(backgroundwidth-boardwidth)/2;
 	///////////////////
 	pipeupimage=new Image();
 	pipeupimage.src="pipeup.png";
@@ -104,7 +107,6 @@ function run(){
 		drawBeginScene();	//绘制开始场景
 		drawBird();			//绘制鸟
 		drawTip(); 			//绘制提示
-	
 	}
 	//游戏进行中
 	if(gamestate==1){
@@ -117,11 +119,15 @@ function run(){
 	//游戏结束
 	if(gamestate==2){
 		if(birdy+birdheight<backgroundheight)	//如果鸟没有落地
-		birdvy=birdvy+gravity;
-		else birdvy=0;
+			birdvy=birdvy+gravity;
+		else {
+		birdvy=0;
+		birdy=backgroundheight-birdheight;
+		}
 		drawEndScene();		//绘制结束场景
 		drawBird();		    //绘制鸟
 		drawScoreBoard();   //绘制分数板
+		//ctx.fillRect(boardx+14,boardy+boardheight-40,75,40); // 测试重新开始按钮的位置
 	}
 }
 
@@ -132,11 +138,11 @@ function drawTip(){
 //绘制分数板
 function drawScoreBoard(){
 	//绘制分数板
-	ctx.drawImage(boardimage,(backgroundwidth-boardwidth)/2,140,boardwidth,boardheight);	
+	ctx.drawImage(boardimage,boardx,boardy,boardwidth,boardheight);	
 	//绘制当前的得分
-	ctx.fillText(score,(backgroundwidth-boardwidth)/2+140,boardheight/2+132);
+	ctx.fillText(score,boardx+140,boardheight/2+boardy-8);//132
 	//绘制最高分
-	ctx.fillText(score,(backgroundwidth-boardwidth)/2+140,boardheight/2+184);
+	ctx.fillText(highscore,boardx+140,boardheight/2+boardy+44);//184
 }
 //绘制开始场景(不包括管道)
 function drawBeginScene(){
@@ -250,20 +256,62 @@ function drawAllPipe(){
 
 function drawBird(){
 	birdy=birdy+birdvy;
+	if(gamestate==0){
+		drawMovingBird();
+	}
+	//根据鸟的y轴速度来判断鸟的朝向,只在游戏进行阶段生效
+	else if(gamestate==1){
+		ctx.save();
+		if(birdvy<=8){
+			ctx.translate(birdx+birdwidth/2,birdy+birdheight/2);
+			ctx.rotate(-Math.PI/6);
+			ctx.translate(-birdx-birdwidth/2,-birdy-birdheight/2);	
+		}
+		if(birdvy>8&&birdvy<=12){
+			ctx.translate(birdx+birdwidth/2,birdy+birdheight/2);
+			ctx.rotate(Math.PI/6);
+			ctx.translate(-birdx-birdwidth/2,-birdy-birdheight/2);	
+		}
+		if(birdvy>12&&birdvy<=16){
+			ctx.translate(birdx+birdwidth/2,birdy+birdheight/2);
+			ctx.rotate(Math.PI/3);
+			ctx.translate(-birdx-birdwidth/2,-birdy-birdheight/2);	
+		}
+		if(birdvy>16){
+			ctx.translate(birdx+birdwidth/2,birdy+birdheight/2);
+			ctx.rotate(Math.PI/2);
+			ctx.translate(-birdx-birdwidth/2,-birdy-birdheight/2);	
+		}
+		drawMovingBird();
+		ctx.restore();
+	}
+	//游戏结束后鸟头向下并停止活动
+	else if(gamestate==2){
+		ctx.save();
+		ctx.translate(birdx+birdwidth/2,birdy+birdheight/2);
+		ctx.rotate(Math.PI/2);
+		ctx.translate(-birdx-birdwidth/2,-birdy-birdheight/2);	
+		ctx.drawImage(birdimage,0,0,92,64,birdx,birdy,birdwidth,birdheight);
+		ctx.restore();
+	}
+	////////////////////////////////////////////
+	//context.drawImage(img,0,0,swidth,sheight,x,y,width,height);
+}
+//绘制扇动翅膀的鸟
+function drawMovingBird(){
 	if(birdstate==1||birdstate==2||birdstate==3){
-	ctx.drawImage(birdimage,0,0,92,64,birdx,birdy,birdwidth,birdheight);
-	birdstate++;
+		ctx.drawImage(birdimage,0,0,92,64,birdx,birdy,birdwidth,birdheight);
+		birdstate++;
 	}
 	else if(birdstate==4||birdstate==5||birdstate==6){
-	ctx.drawImage(birdimage,92,0,92,64,birdx,birdy,birdwidth,birdheight);
-	birdstate++;
+		ctx.drawImage(birdimage,92,0,92,64,birdx,birdy,birdwidth,birdheight);
+		birdstate++;
 	}
 	else if(birdstate==7||birdstate==8||birdstate==9){
-	ctx.drawImage(birdimage,184,0,92,64,birdx,birdy,birdwidth,birdheight);
-	birdstate++;
-	if(birdstate==9) birdstate=1;
+		ctx.drawImage(birdimage,184,0,92,64,birdx,birdy,birdwidth,birdheight);
+		birdstate++;
+		if(birdstate==9) birdstate=1;
 	}
-	//context.drawImage(img,0,0,swidth,sheight,x,y,width,height);
 }
 
 function drawScore(){
@@ -274,7 +322,7 @@ function drawScore(){
 function checkBird(){
 	//先判断第一组管道
 	//如果鸟在x轴上与第一组管道重合
-	if(birdx+birdwidth>pipeoncanvas[0][0]&&birdx+birdwidth<pipeoncanvas[0][0]+pipewidth+birdwidth)
+	if(birdx+birdwidth>pipeoncanvas[0][0]&&birdx+birdwidth<pipeoncanvas[0][0]+pipewidth+birdwidth){
 		//如果鸟在y轴上与第一组管道上部或下部重合
 		if(birdy<backgroundheight-pipeoncanvas[0][1]-blankwidth||birdy+birdheight>backgroundheight-pipeoncanvas[0][1]){
 			ctx.font="bold 35px HarlemNights";	
@@ -282,9 +330,12 @@ function checkBird(){
 			updateScore();
 			gamestate=2;	//游戏结束
 		}
+	}
 	//判断第二组管道
 	//如果鸟在x轴上与第二组管道重合
-	else if(birdx+birdwidth>pipeoncanvas[1][0]&&birdx+birdwidth<pipeoncanvas[1][0]+pipewidth+birdwidth)
+	//这里我原本使用else if出现了问题，但第一版中却没有问题，对比代码后发现原因是上方第一个if后没有加大括号，
+	//这里的else无法区分对应哪一个if，加上大括号后问题解决，建议将if后的内容都加上大括号，养成良好的变成习惯
+	else if(birdx+birdwidth>pipeoncanvas[1][0]&&birdx+birdwidth<pipeoncanvas[1][0]+pipewidth+birdwidth){
 		//如果鸟在y轴上与第二组管道上部或下部重合
 		if(birdy<backgroundheight-pipeoncanvas[1][1]-blankwidth||birdy+birdheight>backgroundheight-pipeoncanvas[1][1]){
 			ctx.font="bold 35px HarlemNights";	
@@ -292,13 +343,15 @@ function checkBird(){
 			updateScore();
 			gamestate=2;	//游戏结束
 		}
+	}
 	//判断是否碰撞地面
-	if(birdy+birdheight>backgroundheight){
+	else if(birdy+birdheight>backgroundheight){
 		ctx.font="bold 35px HarlemNights";	
 		ctx.fillStyle="#000000";
 		updateScore();
 		gamestate=2;	//游戏结束
 	}
+	//通过了一根管道加一分
 	if(birdx>pipeoncanvas[0][0]+pipewidth-movespeed/2&&birdx<pipeoncanvas[0][0]+pipewidth+movespeed/2){
 		score++;
 	}
@@ -340,9 +393,25 @@ function mouseDown(ev){
 		birdvy=-jumpvelocity;
 	}
 	//游戏结束后判断是否点击了重新开始
-	else {
-		
+	else if(gamestate==2){
+		//ctx.fillRect(boardx+14,boardy+boardheight-40,75,40); 
+		//鼠标是否在重新开始按钮上
+		if(mx>boardx+14&&mx<boardx+89&&my>boardy+boardheight-40&&my<boardy+boardheight){
+			restart();
+		}
 	}
+}
+
+function restart(){
+	gamestate=0;	//回到未开始状态
+	ctx.font="bold 40px HarlemNights";	//绘制字体还原
+	ctx.fillStyle="#FFFFFF";
+	score=0;		//当前分数清零
+	pipenumber=0;	//读取的管道数清零
+	initPipe();		//重新初始化水管高度
+	birdx=192-birdwidth;	//鸟的位置和速度回到初始值
+	birdy=224-birdheight;
+	birdvy=0;    
 }
 
 //使用上下键移动小鸟进行测试
