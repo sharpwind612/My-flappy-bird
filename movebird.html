@@ -2,6 +2,12 @@
 <head>
 <title>My flappy bird</title>
 <script>
+//====================================================
+// Name: movebird.html
+//	Des: flappy bird 的过渡版本，实现了场景绘制和碰撞检测，使用上下左右方向键来移动鸟
+// 2014年 4月25日  Create by 风小锐 
+// 2014年 4月26日  Modify by 风小锐 	添加了左右方向，增加了边界检测，修改了碰撞检测部分
+//====================================================
 var boxx=0;
 var boxy=0;
 var boxwidth=384;
@@ -79,7 +85,7 @@ function run(){
 	drawScene();
 	//绘制鸟
 	drawBird();
-	checkBird();
+	//checkBird();
 	}
 	if(gamestate==2){
 	
@@ -170,7 +176,7 @@ function drawBird(){
 	//context.drawImage(img,0,0,swidth,sheight,x,y,width,height);
 }
 
-//检查鸟是否与管道产生碰撞，不可能与第三组管道重合
+//检查鸟是否与管道产生碰撞
 function checkBird(){
 	//先判断第一组管道
 	//如果鸟在x轴上与第一组管道重合
@@ -184,6 +190,13 @@ function checkBird(){
 	else if(birdx+birdwidth>pipeoncanvas[1][0]&&birdx+birdwidth<pipeoncanvas[1][0]+pipewidth+birdwidth){
 		//如果鸟在y轴上与第二组管道上部或下部重合
 		if(birdy<backgroundheight-pipeoncanvas[1][1]-blankwidth||birdy+birdheight>backgroundheight-pipeoncanvas[1][1])
+			gamestate=2;	//游戏结束
+	}
+	//可以在x中上移动的话要加入第三根管道的判断
+	//如果鸟在x轴上与第三组管道重合
+	else if(birdx+birdwidth>pipeoncanvas[2][0]&&birdx+birdwidth<pipeoncanvas[2][0]+pipewidth+birdwidth){
+		//如果鸟在y轴上与第三组管道上部或下部重合
+		if(birdy<backgroundheight-pipeoncanvas[2][1]-blankwidth||birdy+birdheight>backgroundheight-pipeoncanvas[2][1])
 			gamestate=2;	//游戏结束
 	}
 }
@@ -206,18 +219,27 @@ function getkeyAndMove(event) {
     keyCode = event.keyCode; 
 	event.preventDefault();
   }
-  switch(keyCode)
+  switch(keyCode)//
   {
-   //case 37:  //left arrow
+	//这里相比正常版本添加了边界的检测
+	case 37:  //left arrow
+		if(birdx-20>0)
+		birdx=birdx-20;
+		break; 
     case 38:  //up arrow
-	  birdy=birdy-20;
-      break; 
-   // case 39: //right arrow
+		if(birdy-20>0)
+		birdy=birdy-20;
+		break; 
+    case 39: //right arrow
+		if(birdx+birdwidth+20<boxwidth)
+		birdx=birdx+20;
+		break; 
     case 40:  //down arrow
-	  birdy=birdy+20;
-      break; 
+		if(birdy+birdheight+20<boxheight-groundheight)
+		birdy=birdy+20;
+		break; 
 	default:
-	 window.removeEventListener('keydown',getkeyAndMove,false);
+		window.removeEventListener('keydown',getkeyAndMove,false);
    }
  }
 
