@@ -7,6 +7,9 @@
 //	Des: flappy bird 的最终版本，在第二版的基础上加入了鸟的上下俯仰动作，
 //		 添加了飞翔得分碰撞等音效，重构了部分代码
 // 2014年 4月26日  Create by 风小锐 
+// 2015年 4月30日  modify by 风小锐 
+//	1.修改了checkBird方法中关于得分的判断，现在不会在撞上管道左边的情况下得分了。
+//	2.将checkBird方法中关于得分的判断放在了碰撞检测之前，现在不会出现最高分比当前得分高一分的情况了。
 //====================================================
 var boxx=0;
 var boxy=0;
@@ -77,7 +80,8 @@ function init(){
 	deadsound = document.getElementById('deadsound');
 	swooshingsound = document.getElementById('swooshingsound');
 	ctx.lineWidth=2;
-	ctx.font="bold 40px HarlemNights";			//设置绘制分数的字体 Quartz Regular \HarlemNights
+	//ctx.font="bold 40px HarlemNights";			//设置绘制分数的字体 Quartz Regular \HarlemNights
+	ctx.font="bold 40px HirakakuProN-W6";	//绘制字体还原
 	ctx.fillStyle="#FFFFFF";
 	upbackground=new Image();
 	upbackground.src="images/background.png";
@@ -328,6 +332,13 @@ function drawScore(){
 
 //检查鸟是否与管道产生碰撞（不可能与第三组管道重合），以及鸟是否碰撞地面
 function checkBird(){
+
+	//通过了一根管道加一分
+	if(birdx>pipeoncanvas[0][0]&&birdx<pipeoncanvas[0][0]+movespeed
+		||birdx>pipeoncanvas[1][0]&&birdx<pipeoncanvas[1][0]+movespeed){
+		playSound(scoresound,"sounds/point.mp3");
+		score++;
+	}
 	//先判断第一组管道
 	//如果鸟在x轴上与第一组管道重合
 	if(birdx+birdwidth>pipeoncanvas[0][0]&&birdx+birdwidth<pipeoncanvas[0][0]+pipewidth+birdwidth){
@@ -350,21 +361,16 @@ function checkBird(){
 	else if(birdy+birdheight>backgroundheight){
 		hitPipe();
 	}
-	//通过了一根管道加一分
-	if(birdx+birdwidth>pipeoncanvas[0][0]-movespeed/2&&birdx+birdwidth<pipeoncanvas[0][0]+movespeed/2
-		||birdx+birdwidth>pipeoncanvas[1][0]-movespeed/2&&birdx+birdwidth<pipeoncanvas[1][0]+movespeed/2){
-		playSound(scoresound,"sounds/point.mp3");
-		score++;
-	}
 }
 
 //撞击到管道或地面后的一些操作
 function hitPipe(){
-	ctx.font="bold 35px HarlemNights";	
+	ctx.font="bold 40px HirakakuProN-W6";
+	//ctx.font="bold 35px HarlemNights";	
 	ctx.fillStyle="#000000";
-	updateScore();
 	playSound(hitsound,"sounds/hit.mp3");
 	playSound(deadsound,"sounds/die.mp3");
+	updateScore();
 	gamestate=2;	//游戏结束
 }
 
@@ -420,7 +426,8 @@ function mouseDown(ev){
 
 function restart(){
 	gamestate=0;	//回到未开始状态
-	ctx.font="bold 40px HarlemNights";	//绘制字体还原
+	//ctx.font="bold 40px HarlemNights";	//绘制字体还原
+	ctx.font="bold 40px HirakakuProN-W6";	//绘制字体还原
 	ctx.fillStyle="#FFFFFF";
 	score=0;		//当前分数清零
 	pipenumber=0;	//读取的管道数清零
